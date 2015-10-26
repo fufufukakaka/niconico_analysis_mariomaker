@@ -1,0 +1,81 @@
+---
+title: "mariomaker_1"
+author: "Yusuke Fukasawa"
+date: "2015年10月26日"
+output: html_document
+---
+
+マリオメーカー問題というタグで全動画情報を取得し、その動画のおすすめ動画からネットワークを構築
+この問題に関心を持っている人がどのような他の動画を見ているのかを可視化する
+
+```{r}
+# 10月26日時点で200件の動画件数がヒットした。それを二回に分けて取得する。
+getSearch1 <- function(query, size=100, type=c("word","tag")){
+require(RCurl)
+type <- match.arg(type)
+res <- postForm("http://api.search.nicovideo.jp/api/snapshot/",
+.opts = list(postfields =
+jsonlite::toJSON(list(query = query,
+service = list("video"),
+search = ifelse(type=="word",
+list("title","description","tags"),
+list("tags_exact")),
+join = list("cmsid","title","description","tags","start_time",
+"thumbnail_url","view_counter",
+"comment_counter","mylist_counter",
+"last_res_body","length_seconds"),
+filters = list(list(type = "range",
+field = "start_time",
+from= "2014-05-11 19:00:00",                      to = "2015-10-07 02:37:00")),
+size = size,
+issuer = "yourservice/applicationname"
+),auto_unbox=TRUE
+)
+,
+httpheader = c('Content-Type' = 'application/json', Accept = 'application/json'),
+ssl.verifypeer = FALSE))
+res <- as.data.frame(do.call("rbind", rjson::fromJSON(res)$values), stringsAsFactors=FALSE)
+return(res)
+}
+s1<-getSearch1("マリオメーカー問題",type="tag")
+s1<-sapply(s1,unlist)
+s1<-data.frame(s1)
+s1<-s1[order(s1$start_time),]
+
+# 残り100件を取得する
+getsearch2 <- function(query, size=100, type=c("word","tag")){
+require(RCurl)
+type <- match.arg(type)
+res <- postForm("http://api.search.nicovideo.jp/api/snapshot/",
+.opts = list(postfields =
+jsonlite::toJSON(list(query = query,
+service = list("video"),
+search = ifelse(type=="word",
+list("title","description","tags"),
+list("tags_exact")),
+join = list("cmsid","title","description","tags","start_time",
+"thumbnail_url","view_counter",
+"comment_counter","mylist_counter",
+"last_res_body","length_seconds"),
+filters = list(list(type = "range",
+field = "start_time",
+from= "2015-10-07 03:51:00",                      to = "2015-10-26 13:21:00")),
+size = size,
+issuer = "yourservice/applicationname"
+),auto_unbox=TRUE
+)
+,
+httpheader = c('Content-Type' = 'application/json', Accept = 'application/json'),
+ssl.verifypeer = FALSE))
+res <- as.data.frame(do.call("rbind", rjson::fromJSON(res)$values), stringsAsFactors=FALSE)
+return(res)
+}
+s2<-getsearch2("マリオメーカー問題",type="tag")
+s2<-sapply(s2,unlist)
+s2<-data.frame(s2)
+s2<-s2[order(s2$start_time),]
+
+#二つを合わせる
+smerge<-data.frame(rbind(s1,s2))
+knitr::kable(head(smerge))
+```
