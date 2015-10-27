@@ -79,3 +79,12 @@ s2<-s2[order(s2$start_time),]
 smerge<-data.frame(rbind(s1,s2))
 knitr::kable(head(smerge))
 ```
+
+おすすめ動画の取得
+```{r}
+require(XML)
+data <- xmlToDataFrame(paste("http://flapi.nicovideo.jp/api/getrelation?page=1&sort=p&order=d&video=",smerge$cmsid[1],sep=""))
+data<-data[c(-1,-2,-3,-4),-1]
+data$url<-substr(data$url,31,40)
+data<-data[,-2]
+```
