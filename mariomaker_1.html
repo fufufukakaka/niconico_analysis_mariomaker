@@ -253,11 +253,128 @@ knitr::kable(head(smerge))</code></pre>
 <p>おすすめ動画の取得</p>
 <pre class="r"><code>require(XML)</code></pre>
 <pre><code>## Loading required package: XML</code></pre>
-<pre><code>## Warning: package 'XML' was built under R version 3.2.2</code></pre>
 <pre class="r"><code>data &lt;- xmlToDataFrame(paste(&quot;http://flapi.nicovideo.jp/api/getrelation?page=1&amp;sort=p&amp;order=d&amp;video=&quot;,smerge$cmsid[1],sep=&quot;&quot;))
 data&lt;-data[c(-1,-2,-3,-4),-1]
 data$url&lt;-substr(data$url,31,40)
-data&lt;-data[,-2]</code></pre>
+data&lt;-data[,-2]
+data$time&lt;-as.POSIXct(as.numeric(data$time),origin=&quot;1970-01-01 00:00:00&quot;)
+
+#edgelistに格納
+edgelist&lt;-data$url
+edgelist&lt;-data.frame(edgelist)
+edgelist$source&lt;-smerge$cmsid[1]
+edgelist$to&lt;-edgelist$edgelist
+edgelist[,-1]</code></pre>
+<pre><code>##        source         to
+## 1  sm23530620 sm17655557
+## 2  sm23530620 sm27331109
+## 3  sm23530620 sm27317448
+## 4  sm23530620 sm27332558
+## 5  sm23530620 sm27292224
+## 6  sm23530620 sm27309605
+## 7  sm23530620 sm27314368
+## 8  sm23530620 sm27285739
+## 9  sm23530620 sm27303318
+## 10 sm23530620 sm27307752
+## 11 sm23530620 sm27295578
+## 12 sm23530620 sm27133750
+## 13 sm23530620 sm27333244</code></pre>
+<pre class="r"><code>#ノードリストを作ってから格納
+# 格納する前にgetinfoでさらに細かく情報を得たものにする
+nodeinfo&lt;-xmlToDataFrame(paste(&quot;http://ext.nicovideo.jp/api/getthumbinfo/&quot;,smerge$cmsid[1],sep=&quot;&quot;))
+
+# smergeも更新しておく
+for(i in 1:199){
+  s&lt;-paste(&quot;http://ext.nicovideo.jp/api/getthumbinfo/&quot;,smerge$cmsid[i],sep=&quot;&quot;)
+  temp&lt;-xmlToDataFrame(s)
+  nodeinfo&lt;-data.frame(rbind(nodeinfo,temp))
+}
+nodeinfo&lt;-nodeinfo[-1,]
+head(nodeinfo)</code></pre>
+<pre><code>##     video_id
+## 2 sm23530620
+## 3 sm25504742
+## 4 sm26867803
+## 5 sm27123519
+## 6 sm27125443
+## 7 sm27137010
+##                                                              title
+## 2                               ”金稼ぎ”に走る実況者に物申す！！
+## 3 ランキングに上がる動画しか見ないお前らへ　もっと伸びるべき動画集
+## 4     【実況】大阪の女子大生がイカに凄いかを説く【スプラトゥーン】
+## 5                                意地悪マリオメーカー【実況】part1
+## 6                       【実況】 マリオが泣き出すマリオメーカー #1
+## 7                                意地悪マリオメーカー【実況】part2
+##                                                                                                                                                                                                                                                                                                                                                                                                                                                  description
+## 2                                                                                                                                                                                                                                                                   私の言い分にどうか耳を傾けてください。ブログ→http://mokou1.blogspot.jp/ニコ生→http://ch.nicovideo.jp/mokou1youtube→https://www.youtube.com/user/mokoulisztその他動画→mylist/29936399
+## 3                                                                                                                                                                                                                                                                                                         もっと伸びるべき再生、コメント、マイリストは2015年2月5日現在のもの広告ありがとうございます！今回紹介した動画mylist/48211113投稿動画mylist/44086248
+## 4                                             初めましてアイルと申します！チャージャーという癖のある殺戮兵器を使いこなす実況者りめるんさんsm26402286普通に使ってみるとこんなに難しくイカにりめるんさんが凄腕かを説く　ファン動画です次回：sm27010715スプラトゥーン実況まとめ：mylist/50908220ニコ生コミュco2276916Twitterhttps://twitter.com/ailuyozakuraブログhttp://ameblo.jp/airu-1121/チャンネルhttps://www.youtube.com/channel/UC4-tm-wUjpquGyb8GO2yH7g
+## 5 とにかく意地悪でいやらしいコースを作っていきます。スーパーマリオメーカーの実況プレイです。今までのアクションゲームの恨みを返します。【配信コース】 意地悪マリオメーカー1 ID:4262-0000-000F-958D次⇒sm27137010　　　 mylist/52980240　　コメントできない方は⇒sm27123519★実況part1集⇒mylist/16254406ツイッター（更新予定や生放送の情報など）⇒http://twitter.com/retokani 　　　　コミュ⇒co22673youtubeチャンネル⇒https://www.youtube.com/user/retokani
+## 6                           鬼畜だけど楽しめる。そんなステージを作りたい。WiiUより発売のゲーム、「スーパーマリオメーカー」の実況プレイ動画です。今回のステージアビコース1 A577-0000-000F-E7BF次回ステージアビコース2 50CC-0000-0013-6BAC魔王魂http://maoudamashii.jokersounds.com/コメントが打てない人→sm27125443マリオメーカー：mylist/52983838 次回→sm27137729twitter：http://twitter.com/abuuuntter更新報告：user/14613584　実況まとめ：mylist/13083520
+## 7                       今まで踏まれ続けてきたクリボーの怨念をコースにしました。スーパーマリオメーカーの実況プレイです。【配信コース】 クリボーの逆襲 ID:E3C2-0000-0013-3DA6前⇒sm27123519　　　 次⇒sm27155810　　　 mylist/52980240　　コメントできない方は⇒sm27137010★実況part1集⇒mylist/16254406ツイッター（更新予定や生放送の情報など）⇒http://twitter.com/retokani 　　　　コミュ⇒co22673youtubeチャンネル⇒https://www.youtube.com/user/retokani
+##                                   thumbnail_url            first_retrieve
+## 2 http://tn-skr1.smilevideo.jp/smile?i=23530620 2014-05-11T19:00:00+09:00
+## 3 http://tn-skr3.smilevideo.jp/smile?i=25504742 2015-02-05T22:00:00+09:00
+## 4 http://tn-skr4.smilevideo.jp/smile?i=26867803 2015-08-06T06:01:18+09:00
+## 5 http://tn-skr4.smilevideo.jp/smile?i=27123519 2015-09-10T06:03:13+09:00
+## 6 http://tn-skr4.smilevideo.jp/smile?i=27125443 2015-09-10T17:05:23+09:00
+## 7 http://tn-skr3.smilevideo.jp/smile?i=27137010 2015-09-12T08:05:15+09:00
+##   length movie_type size_high size_low view_counter comment_num
+## 2   4:26        mp4   4755385  2221686        81681        5750
+## 3  11:10        mp4 103748743 34906329         4485         202
+## 4   4:38        mp4 102944636 15063167        10208         193
+## 5  18:44        mp4  77925144 55818138       964385       24121
+## 6  24:02        mp4 103343636 74384744       957892       26688
+## 7  20:26        mp4  84860343 62666413       605028       20905
+##   mylist_counter
+## 2            630
+## 3             67
+## 4              8
+## 5           7582
+## 6           6291
+## 7           2891
+##                                                                                   last_res_body
+## 2          (⌒_ゝ⌒)ハハッチョロ 3分36秒w (((^,_ゝ^;))) (########⌒,_ゝ⌒)&amp;lt; クリ奨が始ま... 
+## 3      これはすごいwwwwww wwwwwwwwww TASよりすげぇwww すげぇ wwwwwwwwwwww 比較動画シリーズの常 
+## 4                                     はぁ??? りめるんちゃうんかい オタサーの姫w 引退おめえ... 
+## 5 レトルトが本家だぞ wwwwwwwww こんちゃーす! こんちゃーす! やっぱりこれ! www えええええええ... 
+## 6                                       洒落た導入だなぁ ←パクリとかwww投稿日 ←大文字で書... 
+## 7                                          88888888888888888888 wwwwwwwwwwwwwwwwwwww 海の..... 
+##                                  watch_url thumb_type embeddable
+## 2 http://www.nicovideo.jp/watch/sm23530620      video          1
+## 3 http://www.nicovideo.jp/watch/sm25504742      video          1
+## 4 http://www.nicovideo.jp/watch/sm26867803      video          1
+## 5 http://www.nicovideo.jp/watch/sm27123519      video          1
+## 6 http://www.nicovideo.jp/watch/sm27125443      video          1
+## 7 http://www.nicovideo.jp/watch/sm27137010      video          1
+##   no_live_play
+## 2            0
+## 3            0
+## 4            0
+## 5            0
+## 6            0
+## 7            0
+##                                                                                                                                                                   tags
+## 2 もこうクリエイター奨励プログラム実況プレイ動画実況者ゲームクリエイター奨励プログラム濫用問題時代が追いついたマリオメーカー問題すごいつりざお妖怪小銭稼ぎ自己紹介動画
+## 3                          エンターテイメント動画紹介動画もっと評価されるべきSHIROBAKOご注文はうさぎですか？ガンダム_Gのレコンギスタ銀魂妖怪ウォッチマリオメーカー問題
+## 4                                               ゲーム実況プレイ動画スプラトゥーンSplatoonSplatoon（スプラトゥーン）アイルりめるんただのファンもこうマリオメーカー問題
+## 5                                                                                ゲームスーパーマリオメーカーマリオメーカー実況プレイ動画レトルト実況プレイpart1リンク
+## 6                                                                                    ゲームスーパーマリオメーカー実況プレイ動画実況プレイpart1リンクマリオメーカー問題
+## 7                                                                                                     ゲームスーパーマリオメーカーマリオメーカー実況プレイ動画レトルト
+##    user_id user_nickname
+## 2   449948        もこう
+## 3 12512482        あぽむ
+## 4  7813421        こなた
+## 5 14930070      レトルト
+## 6 14613584          アブ
+## 7 14930070      レトルト
+##                                                     user_icon_url
+## 2     http://usericon.nimg.jp/usericon/s/44/449948.jpg?1445738630
+## 3 http://usericon.nimg.jp/usericon/s/1251/12512482.jpg?1325359877
+## 4                   http://res.nimg.jp/img/user/thumb/blank_s.jpg
+## 5 http://usericon.nimg.jp/usericon/s/1493/14930070.jpg?1436728965
+## 6 http://usericon.nimg.jp/usericon/s/1461/14613584.jpg?1289512243
+## 7 http://usericon.nimg.jp/usericon/s/1493/14930070.jpg?1436728965</code></pre>
 
 
 </div>

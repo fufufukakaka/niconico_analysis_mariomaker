@@ -8,7 +8,7 @@ output: html_document
 マリオメーカー問題というタグで全動画情報を取得し、その動画のおすすめ動画からネットワークを構築
 この問題に関心を持っている人がどのような他の動画を見ているのかを可視化する
 
-```{r}
+```{r,cache=TRUE}
 # 10月26日時点で200件の動画件数がヒットした。それを二回に分けて取得する。
 getSearch1 <- function(query, size=100, type=c("word","tag")){
 require(RCurl)
@@ -77,14 +77,63 @@ s2<-s2[order(s2$start_time),]
 
 #二つを合わせる
 smerge<-data.frame(rbind(s1,s2))
+# 削除されている動画を消す
+smerge$X_rowid<-1:199
+smerge<-smerge[c(-47,-48,-49)]
 knitr::kable(head(smerge))
 ```
 
 おすすめ動画の取得
 ```{r}
 require(XML)
+#ノードリストを作って格納
+# 格納する前にgetinfoでさらに細かく情報を得たものにする
+nodeinfo<-xmlToDataFrame(paste("http://ext.nicovideo.jp/api/getthumbinfo/",smerge$cmsid[1],sep=""))
+```
+```{r}
+# smergeを更新しておく
+for(i in 2:196){
+  s<-paste("http://ext.nicovideo.jp/api/getthumbinfo/",smerge$cmsid[i],sep="")
+  temp<-xmlToDataFrame(s)
+  nodeinfo<-data.frame(rbind(nodeinfo,temp))
+}
+nodeinfo<-nodeinfo[-1,]
+```
+```{r}
+# 関連動画を取得してノードとエッジに加える
 data <- xmlToDataFrame(paste("http://flapi.nicovideo.jp/api/getrelation?page=1&sort=p&order=d&video=",smerge$cmsid[1],sep=""))
 data<-data[c(-1,-2,-3,-4),-1]
 data$url<-substr(data$url,31,40)
 data<-data[,-2]
+data$time<-as.POSIXct(as.numeric(data$time),origin="1970-01-01 00:00:00")
+
+#edgelistに格納
+edgelist<-data$url
+edgelist<-data.frame(edgelist)
+edgelist$source<-smerge$cmsid[1]
+edgelist$to<-edgelist$edgelist
+edgelist[,-1]
+```
+```{r}
+# 以降はfor文で
+for(i in 2:199){
+  ss<-paste("http://flapi.nicovideo.jp/api/getrelation?page=1&sort=p&order=d&video=",smerge$cmsid[i],sep="")
+  data <- xmlToDataFrame(ss)
+  data<-data[c(-1,-2,-3,-4),-1]
+  data$url<-substr(data$url,31,40)
+  
+  # nodeinfoに追加
+  s<-paste("http://ext.nicovideo.jp/api/getthumbinfo/",data$url[i],sep="")
+  ttemp<-xmlToDataFrame(s)
+  nodeinfo<-data.frame(rbind(nodeinfo,ttemp))
+  
+  # edgelistに追加
+  tempedge<-data$url
+  tempedge<-data.frame(tempedge)
+  tempedge$source<-smerge$cmsid[i]
+  tempedge$to<-tempedge$tempedge
+  tempedge[,-1]
+  edgelist<-data.frame(rbind(edgelist,tempedge))
+}
+  
 ```
