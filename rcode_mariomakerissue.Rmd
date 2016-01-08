@@ -1,0 +1,159 @@
+---
+title: "mariomaker_issue"
+author: "Yusuke Fukasawa"
+date: "2016年1月7日"
+output: html_document
+---
+
+```{r}
+require(niconico)
+require(igraph)
+require(RCurl)
+# 1月7日時点で120件の動画件数がヒットした。それを二回に分けて取得する。
+getSearch1 <- function(query, size=100, type=c("word","tag")){
+type <- match.arg(type)
+res <- postForm("http://api.search.nicovideo.jp/api/snapshot/",
+.opts = list(postfields =
+jsonlite::toJSON(list(query = query,
+service = list("video"),
+search = ifelse(type=="word",
+list("title","description","tags"),
+list("tags_exact")),
+join = list("cmsid","title","description","tags","start_time",
+"thumbnail_url","view_counter",
+"comment_counter","mylist_counter",
+"last_res_body","length_seconds"),
+filters = list(list(type = "range",
+field = "start_time",
+from= "2014-05-11 19:00:00",                      to = "2015-10-24 23:59:59")),
+size = size,
+issuer = "yourservice/applicationname"
+),auto_unbox=TRUE
+)
+,
+httpheader = c('Content-Type' = 'application/json', Accept = 'application/json'),
+ssl.verifypeer = FALSE))
+res <- as.data.frame(do.call("rbind", rjson::fromJSON(res)$values), stringsAsFactors=FALSE)
+return(res)
+}
+s1<-getSearch1("マリオメーカー問題",type="tag")
+s1<-sapply(s1,unlist)
+s1<-data.frame(s1)
+s1<-s1[order(s1$start_time),]
+
+# 残り100件を取得する
+getsearch2 <- function(query, size=100, type=c("word","tag")){
+type <- match.arg(type)
+res <- postForm("http://api.search.nicovideo.jp/api/snapshot/",
+.opts = list(postfields =
+jsonlite::toJSON(list(query = query,
+service = list("video"),
+search = ifelse(type=="word",
+list("title","description","tags"),
+list("tags_exact")),
+join = list("cmsid","title","description","tags","start_time",
+"thumbnail_url","view_counter",
+"comment_counter","mylist_counter",
+"last_res_body","length_seconds"),
+filters = list(list(type = "range",
+field = "start_time",
+from= "2015-10-25 00:00:00",                      to = "2015-12-31 23:59:59")),
+size = size,
+issuer = "yourservice/applicationname"
+),auto_unbox=TRUE
+)
+,
+httpheader = c('Content-Type' = 'application/json', Accept = 'application/json'),
+ssl.verifypeer = FALSE))
+res <- as.data.frame(do.call("rbind", rjson::fromJSON(res)$values), stringsAsFactors=FALSE)
+return(res)
+}
+s2<-getsearch2("マリオメーカー問題",type="tag")
+s2<-sapply(s2,unlist)
+s2<-data.frame(s2)
+s2<-s2[order(s2$start_time),]
+
+#二つを合わせる
+smerge<-data.frame(rbind(s1,s2))
+smerge$X_rowid<-1:120
+```
+
+おすすめ動画の取得
+```{r}
+require(XML)
+#ノードリストを作って格納
+# 格納する前にgetinfoでさらに細かく情報を得たものにする
+nodeinfo<-c()
+for(i in 1:120){
+  s<-paste("http://ext.nicovideo.jp/api/getthumbinfo/",smerge$cmsid[i],sep="")
+  temp<-xmlToDataFrame(s)
+  nodeinfo<-data.frame(rbind(nodeinfo,temp))
+}
+
+```
+```{r}
+# 関連動画を取得してノードとエッジに加える
+data <- xmlToDataFrame(paste("http://flapi.nicovideo.jp/api/getrelation?page=1&sort=p&order=d&video=",smerge$cmsid[1],sep=""))
+data<-data[c(-1,-2,-3,-4),-1]
+data$url<-substr(data$url,31,40)
+data<-data[,-2]
+data$time<-as.POSIXct(as.numeric(data$time),origin="1970-01-01 00:00:00")
+
+#edgelistに格納
+edgelist<-data$url
+edgelist<-data.frame(edgelist)
+edgelist$source<-smerge$cmsid[1]
+edgelist$to<-edgelist$edgelist
+edgelist<-edgelist[,-1]
+
+for(i in 2:120){
+  ss<-paste("http://flapi.nicovideo.jp/api/getrelation?page=1&sort=p&order=d&video=",smerge$cmsid[i],sep="")
+  data <- xmlToDataFrame(ss)
+  data<-data[c(-1,-2,-3,-4),-1]
+  data$url<-substr(data$url,31,40)
+  
+  # nodeinfoに追加
+  for(k in 1:length(data)){
+  s<-paste("http://ext.nicovideo.jp/api/getthumbinfo/",data$url[k],sep="")
+  ttemp<-xmlToDataFrame(s)
+  if(length(ttemp) > 2){
+  names(ttemp)<-names(nodeinfo)
+  nodeinfo<-data.frame(rbind(nodeinfo,ttemp))
+  # edgelistに追加
+  tempedge<-data$url
+  tempedge<-data.frame(tempedge)
+  tempedge$source<-smerge$cmsid[i]
+  tempedge$to<-tempedge$tempedge
+  tempedge<-tempedge[,-1]
+  edgelist<-data.frame(rbind(edgelist,tempedge))
+  }
+  }
+}
+```
+
+nodeinfoにノードの情報が格納されている。これはあとでgephiでくっつける
+
+edgelistを使ってネットワークオブジェクトを生成して、Gephiで読めるgml形式にする。
+
+ノードの情報も同時にcsvで書き出す。
+```{r}
+g <- graph.data.frame(edgelist,directed=F)
+write.graph(g,"graph2.gml",format="gml")
+write.csv(nodeinfo,"nodeinfo.csv",fileEncoding = "utf-8")
+```
+
+Gephiに移した後で情報抽出ができていなかった動画があったので、補足する。
+
+```{r}
+others<-read.csv("otherlist.csv")
+nodeinfo2<-c()
+for(i in 1:136){
+    # nodeinfoに追加
+    s<-paste("http://ext.nicovideo.jp/api/getthumbinfo/",others$name[i],sep="")
+    ttemp<-xmlToDataFrame(s)
+    if(length(ttemp) > 2){
+      nodeinfo2<-data.frame(rbind(nodeinfo2,ttemp))
+    }
+}
+write.csv(nodeinfo2,"nodeinfo2.csv",fileEncoding = "utf-8")
+```
