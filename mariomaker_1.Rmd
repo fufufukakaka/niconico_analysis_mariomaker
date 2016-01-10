@@ -132,7 +132,7 @@ for(i in 2:199){
   tempedge<-data.frame(tempedge)
   tempedge$source<-smerge$cmsid[i]
   tempedge$to<-tempedge$tempedge
-  tempedge[,-1]
+  tempedge<-tempedge[,-1]
   edgelist<-data.frame(rbind(edgelist,tempedge))
 }
   
